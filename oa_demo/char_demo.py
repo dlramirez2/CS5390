@@ -4,6 +4,7 @@ import datasets
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import numpy as np
 from tqdm import tqdm
+from contextlib import contextmanager
 
 def make_model():
     class MyClassifier(OpenAttack.Classifier):
@@ -26,7 +27,17 @@ def make_model():
             return np.array(ret)
     return MyClassifier()
 
+@contextmanager
+def no_ssl_verify():
+    import ssl
+    from urllib import request
 
+    try:
+        request.urlopen.__kwdefaults__.update({'context': ssl.SSLContext()})
+        yield
+    finally:
+        request.urlopen.__kwdefaults__.update({'context': None})
+        
 def main():
     def dataset_mapping(x):
         return{
@@ -35,7 +46,8 @@ def main():
         }
 
     print("Char-Level Attacks")
-    attacker = OpenAttack.attackers.VIPERAttacker()
+    with no_ssl_verify():
+        attacker = OpenAttack.attackers.VIPERAttacker()
     
     print("Build model")
     victim = make_model() 
